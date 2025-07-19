@@ -1,0 +1,4 @@
+- name: "test_rule"
+  modality: "not_allowed"
+  source: ".*/application/.*"
+  target: ".*/domain/.*"

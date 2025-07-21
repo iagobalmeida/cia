@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
-from example.application import other_service
+from example.application import (
+    other_service
+)
 
 
 @dataclass

@@ -23,7 +23,7 @@ class CIAModule:
         self.root_path = root_path
         self.file_path = file_path
         self.folder_depth = len(str(file_path).split('/'))
-        self.content = file_path.read_text(encoding='utf-8')
+        self.content = None
         self.imports = []
 
     @property
@@ -58,7 +58,30 @@ class CIAModule:
             self.mermaid_node_sufix
         ])
 
+    def load_content(self):
+        content = self.file_path.read_text(encoding='utf-8')
+
+        def replacer(match):
+            from_part = match.group("from_part")
+            imports_raw = match.group("imports")
+            # Remove quebras de linha, comentários e espaços extras
+            imports = re.sub(r"#.*", "", imports_raw)  # remove comentários
+            imports = re.sub(r"\s+", " ", imports)     # substitui espaços múltiplos por um único espaço
+            imports = imports.strip().strip(",")       # remove vírgulas e espaços extras das pontas
+            return f"{from_part} import {imports}"
+
+        # Regex que pega from ... import ( multiline ... )
+        pattern = re.compile(
+            r"(?P<from_part>from\s+[^\n]+?)\s+import\s*\(\s*(?P<imports>.*?)\s*\)",
+            re.DOTALL
+        )
+
+        self.content = pattern.sub(replacer, content)
+
     def resolve_imports(self) -> List[Exception]:
+        if not self.content:
+            self.load_content()
+
         excs = []
         for line in self.content.splitlines():
             if not line.startswith('from'):

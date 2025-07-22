@@ -1,4 +1,5 @@
-# Code Import Analysis - CIA
+![CIA](CIA.svg)
+# Code Import Analysis
 
 ![demo](demo.png)
 

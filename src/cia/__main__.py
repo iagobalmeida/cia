@@ -46,16 +46,13 @@ def main():
         debug=args.debug
     )
 
+    cia_rules = cia_rules_from_file(args.rules_file)
+
     cia = CIA(
         base_dir=args.base_dir,
-        config=cia_config
+        config=cia_config,
+        rules=cia_rules
     )
-
-    cia.load_modules()
-
-    cia_rules = cia_rules_from_file(args.rules_file)
-    for rule in cia_rules:
-        cia.include_rule(rule)
 
     cia.apply_rules()
 

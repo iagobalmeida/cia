@@ -13,7 +13,7 @@ def print_table(headers, rows):
         print(format_row(row))
 
 
-EMOJIS = {
+RESULTS_ICONS = {
     True: '✔',
     False: '✖'
 }

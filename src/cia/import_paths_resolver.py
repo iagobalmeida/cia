@@ -69,6 +69,9 @@ def _resolve_module_to_path(module_name: str, base_path: Path) -> Optional[Path]
         spec = importlib.util.find_spec(module_name)
         if spec and spec.origin and spec.origin != "built-in":
             return Path(spec.origin).resolve()
+    except ModuleNotFoundError as ex:
+        print(f'Could not resolve module "{module_name}" from "{base_path}", considering it as external import')
+        return Path(module_name)
     finally:
         sys.path.pop(0)
 

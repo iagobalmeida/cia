@@ -5,21 +5,22 @@ from pathlib import Path
 from typing import List
 
 from .import_paths_resolver import resolve_import_paths
-from .utils import EMOJIS, path_to_name, print_table
+from .utils import RESULTS_ICONS, path_to_name, print_table
 
 
 class CIAModule:
     class Import:
-        def __init__(self, name: str, file_path: str, valid: bool = True, invalid_rules_name: List[str] = None):
-            self.name = name
+        def __init__(self, import_line: str, file_path: str, valid: bool = True, invalid_rules_name: List[str] = None):
+            self.import_line = import_line
             self.file_path = file_path
+            self.name = path_to_name(file_path)
             self.valid = valid
             self.invalid_rules_name = invalid_rules_name if invalid_rules_name else []
 
     imports: List[Import]
 
-    def __init__(self, name: str, root_path: Path, file_path: Path):
-        self.name = name
+    def __init__(self, root_path: Path, file_path: Path):
+        self.name = path_to_name(file_path)
         self.root_path = root_path
         self.file_path = file_path
         self.folder_depth = len(str(file_path).split('/'))
@@ -51,32 +52,12 @@ class CIAModule:
     @property
     def mermaid_node_line(self) -> str:
         return ''.join([
-            '\n\t',
+            '\t',
             self.mermaid_node_name,
             self.mermaid_node_prefix,
             self.name,
             self.mermaid_node_sufix
         ])
-
-    def load_content(self):
-        content = self.file_path.read_text(encoding='utf-8')
-
-        def replacer(match):
-            from_part = match.group("from_part")
-            imports_raw = match.group("imports")
-            # Remove quebras de linha, comentários e espaços extras
-            imports = re.sub(r"#.*", "", imports_raw)  # remove comentários
-            imports = re.sub(r"\s+", " ", imports)     # substitui espaços múltiplos por um único espaço
-            imports = imports.strip().strip(",")       # remove vírgulas e espaços extras das pontas
-            return f"{from_part} import {imports}"
-
-        # Regex que pega from ... import ( multiline ... )
-        pattern = re.compile(
-            r"(?P<from_part>from\s+[^\n]+?)\s+import\s*\(\s*(?P<imports>.*?)\s*\)",
-            re.DOTALL
-        )
-
-        self.content = pattern.sub(replacer, content)
 
     def resolve_imports(self) -> List[Exception]:
         if not self.content:
@@ -96,12 +77,33 @@ class CIAModule:
 
                 for path in paths:
                     self.imports.append(
-                        CIAModule.Import(name=path_to_name(path), file_path=path)
+                        CIAModule.Import(import_line=line, file_path=path)
                     )
             except Exception as exc:
                 excs.append(exc)
 
         return excs
+
+    # TODO: Use `ast` to parse imports
+    def load_content(self):
+        content = self.file_path.read_text(encoding='utf-8')
+
+        def replacer(match):
+            from_part = match.group("from_part")
+            imports_raw = match.group("imports")
+            # Remove quebras de linha, comentários e espaços extras
+            imports = re.sub(r"#.*", "", imports_raw)  # remove comentários
+            imports = re.sub(r"\s+", " ", imports)     # substitui espaços múltiplos por um único espaço
+            imports = imports.strip().strip(",")       # remove vírgulas e espaços extras das pontas
+            return f"{from_part} import {imports}"
+
+        # Regex que pega from ... import ( multiline ... )
+        pattern = re.compile(
+            r"(?P<from_part>from\s+[^\n]+?)\s+import\s*\(\s*(?P<imports>.*?)\s*\)",
+            re.DOTALL
+        )
+
+        self.content = pattern.sub(replacer, content)
 
 
 class CIARule:
@@ -150,20 +152,29 @@ class CIA:
     modules: List[CIAModule] = []
     rules: List[CIARule] = []
 
-    def __init__(self, base_dir: str, config: CIAConfig = CIAConfig()):
-        self.config = config
+    def __init__(self, base_dir: str, config: CIAConfig = CIAConfig(), rules: List[CIARule] = [], load: bool = True):
         self.base_path = Path(base_dir).resolve()
+        self.config = config
+        self.rules = rules
+        self.total_modules = 0
+        if load:
+            self.load_modules()
 
-    def include_rule(self, cia_rule: CIARule):
-        self.rules.append(cia_rule)
+    @property
+    def total_invalid_modules(self) -> int:
+        return len([m for m in self.modules if not m.valid])
+
+    @property
+    def total_invalid_imports(self) -> int:
+        return sum([len([i for i in m.imports if not i.valid]) for m in self.modules])
 
     def load_modules(self):
-        for path in self.base_path.rglob('*'):
+        all_paths = self.base_path.rglob('*')
+        for path in all_paths:
             if not path.is_file() or not path.suffix == '.py':
                 continue
 
             cia_module = CIAModule(
-                name=path_to_name(path),
                 root_path=self.base_path,
                 file_path=path
             )
@@ -173,6 +184,7 @@ class CIA:
                 for exc in excs:
                     print(exc)
 
+            self.total_modules += 1
             self.modules.append(cia_module)
 
     def apply_rules(self):
@@ -182,15 +194,19 @@ class CIA:
 
     def mermaid(self):
         lines = ['graph TB']
-        styleLines = ['']
+        styleLines = ['\tclassDef invalidNode stroke:#f00,stroke-width:4px;']
+        invalid_nodes = []
 
         curr = 0
         for module in self.modules:
             lines.append(module.mermaid_node_line)
+            if not module.valid:
+                invalid_nodes.append(module.mermaid_node_name)
+
             for index, i in enumerate(module.imports):
                 actual_index = curr + index
                 node_target = i.name.replace('.py', '')
-                lines.append(f'\t{module.mermaid_node_name} --> {node_target}')
+                lines.append(f'\t{node_target} -- "{i.import_line}" --> {module.mermaid_node_name}')
                 if not i.valid:
                     styleLines.append(f'\tlinkStyle {actual_index} stroke:#f00')
             curr += len(module.imports)
@@ -198,12 +214,18 @@ class CIA:
         output_file = self.config.mermaid_output
         if not output_file:
             output_file = f'./{self.base_path.parts[-1]}.mmd'
+
         with open(output_file, 'w') as file:
             file.write(f'\n'.join(lines))
+            file.write(f'\n')
             file.write(f'\n'.join(styleLines))
+            file.write(f'\n class {",".join(invalid_nodes)} invalidNode;')
 
     def table(self):
-        print('\nCIA! Open the door!\n')
+        print(f'\nCIA! Open the door!')
+        print(f'{self.total_modules} modules analised')
+        print(f'{self.total_invalid_modules} invalid modules')
+        print(f'{self.total_invalid_imports} invalid imports\n')
         cols = ['Module Name', 'Module Path', 'Import Name', 'Import Path', 'Valid', 'Invalid Rules']
         rows = []
         for module in self.modules:
@@ -215,7 +237,7 @@ class CIA:
                 module.file_path,
                 '',
                 '',
-                EMOJIS[module.valid],
+                RESULTS_ICONS[module.valid],
                 ''
             ])
             for i in module.imports:
@@ -224,7 +246,7 @@ class CIA:
                     '',
                     i.name,
                     i.file_path,
-                    EMOJIS[i.valid],
+                    RESULTS_ICONS[i.valid],
                     i.invalid_rules_name
                 ])
         print_table(cols, rows)

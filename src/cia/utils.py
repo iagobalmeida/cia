@@ -1,21 +1,28 @@
+import re
+from enum import StrEnum
 from pathlib import Path
 
 
-def print_table(headers, rows):
-    col_widths = [max(len(str(item)) for item in col) for col in zip(headers, *rows)]
-
-    def format_row(row):
-        return " | ".join(str(val).ljust(width) for val, width in zip(row, col_widths))
-
-    print(format_row(headers))
-    print(" + ".join(' ' * w for w in col_widths))
-    for row in rows:
-        print(format_row(row))
+class bcolors(StrEnum):
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 RESULTS_ICONS = {
-    True: '✔',
-    False: '✖'
+    True: f'{bcolors.OKGREEN}✔{bcolors.ENDC}',
+    False: f'{bcolors.FAIL}✖{bcolors.ENDC}'
+}
+
+RESULT_COLORS = {
+    True: None,
+    False: f'{bcolors.UNDERLINE}{bcolors.FAIL}'
 }
 
 

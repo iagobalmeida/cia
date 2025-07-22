@@ -56,6 +56,8 @@ def main():
 
     cia.apply_rules()
 
+    cia.results()
+
     if cia_config.table:
         cia.table()
 

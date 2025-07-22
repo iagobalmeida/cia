@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import List
 
 from .import_paths_resolver import resolve_import_paths
-from .utils import RESULTS_ICONS, path_to_name, print_table
+from .result_table import ResultRow, ResultTable
+from .utils import RESULT_COLORS, RESULTS_ICONS, bcolors, path_to_name
 
 
 class CIAModule:
@@ -221,32 +222,35 @@ class CIA:
             file.write(f'\n'.join(styleLines))
             file.write(f'\n class {",".join(invalid_nodes)} invalidNode;')
 
-    def table(self):
-        print(f'\nCIA! Open the door!')
+    def results(self):
+        print(f'{bcolors.FAIL}\nCIA! Open the door!{bcolors.ENDC}')
         print(f'{self.total_modules} modules analised')
         print(f'{self.total_invalid_modules} invalid modules')
         print(f'{self.total_invalid_imports} invalid imports\n')
+
+    def table(self):
+        result_table = ResultTable(headers=['Module Name', 'Module Path', 'Import Name', 'Import Path', 'Valid', 'Invalid Rules'], rows=[])
+
         cols = ['Module Name', 'Module Path', 'Import Name', 'Import Path', 'Valid', 'Invalid Rules']
-        rows = []
         for module in self.modules:
             if module.valid and not self.config.table_valid:
                 continue
 
-            rows.append([
+            result_table.rows.append(ResultRow(values=[
                 module.name,
                 module.file_path,
                 '',
                 '',
                 RESULTS_ICONS[module.valid],
                 ''
-            ])
+            ], color=RESULT_COLORS[module.valid]))
             for i in module.imports:
-                rows.append([
+                result_table.rows.append(ResultRow(values=[
                     '',
                     '',
                     i.name,
                     i.file_path,
                     RESULTS_ICONS[i.valid],
-                    i.invalid_rules_name
-                ])
-        print_table(cols, rows)
+                    ', '.join(i.invalid_rules_name)
+                ], color=RESULT_COLORS[i.valid]))
+        result_table.print()

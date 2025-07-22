@@ -1,6 +1,6 @@
 # Code Import Analysis - CIA
 
-![alt text](logo.jpg)
+![alt text](demo.png)
 
 ### Introduction
 Let the CIA help you track down intruders in the wrong files!

@@ -1,0 +1,28 @@
+graph TB
+	example[[example]]
+	application -- "from . import application, domain" --> example
+	domain -- "from . import application, domain" --> example
+	domain[[domain]]
+	entities -- "from . import entities, value_objects" --> domain
+	value_objects -- "from . import entities, value_objects" --> domain
+	other_service[other_service.py]
+	user_service[user_service.py]
+	domain -- "from example import domain" --> user_service
+	application[[application]]
+	other_service -- "from . import other_service, user_service" --> application
+	user_service -- "from . import other_service, user_service" --> application
+	cpf[cpf.py]
+	value_objects[[value_objects]]
+	cpf -- "from . import cpf" --> value_objects
+	other_entity[other_entity.py]
+	dataclasses.dataclass -- "from dataclasses import dataclass" --> other_entity
+	other_service -- "from example.application import other_service" --> other_entity
+	user[user.py]
+	dataclasses.dataclass -- "from dataclasses import dataclass" --> user
+	value_objects -- "from .. import value_objects" --> user
+	entities[[entities]]
+	other_entity -- "from . import other_entity, user" --> entities
+	user -- "from . import other_entity, user" --> entities
+	classDef invalidNode stroke:#f00,stroke-width:4px;
+	linkStyle 9 stroke:#f00
+ class other_entity invalidNode;

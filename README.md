@@ -1,6 +1,6 @@
 # Code Import Analysis - CIA
 
-![alt text](demo.png)
+![demo](demo.png)
 
 ### Introduction
 Let the CIA help you track down intruders in the wrong files!
@@ -20,3 +20,6 @@ python3.12 -m src.cia
 ```
 python3.12 -m src.cia example -r ./example/cia_rules.yml
 ```
+
+_Made by devs for devs_
+![embrace it](logo.jpg)
